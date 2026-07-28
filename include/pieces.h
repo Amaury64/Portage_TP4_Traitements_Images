@@ -1,6 +1,7 @@
 #pragma once
-#include <vector>
 
+#include <optional>
+#include <vector>
 
 
 struct PieceReference {
@@ -16,3 +17,10 @@ inline const std::vector<PieceReference> kTableReference = {
 // Combien de millimètres represente un pixel ?
 // On le deduit d'une piece dont on connait la valeur.
 double TaillePixelMm(double aire_pixels_reference, double diametre_reel_mm);
+double AireTheoriquePixels(double diametre_mm, double taille_pixel_mm);
+
+std::optional<int> IdentifierPiece(double aire_pixels,
+    double ratio_axes,
+    double taille_pixel_mm,
+    double seuil_circularite = 1.15,
+    double marge_aire = 0.20);
