@@ -11,6 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # OpenCV vient des paquets systeme sur la CI, de vcpkg sur le poste de
+      # developpement. Deux versions differentes : c'est voulu, cela attrape
+      # les usages d'API trop recentes.
+      - name: Install OpenCV
+        run: sudo apt-get update && sudo apt-get install -y libopencv-dev
+
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
@@ -20,3 +26,4 @@ jobs:
       - name: Test
         working-directory: build
         run: ctest --output-on-failure
+        
