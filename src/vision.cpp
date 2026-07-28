@@ -47,3 +47,24 @@ cv::Mat Imfill(const cv::Mat& binaire) {
 	
 
 }
+
+cv::Mat Imopen(const cv::Mat& fill,int rayon) {
+	if (rayon < 1) {
+		throw std::invalid_argument("Imopen : le rayon doit valoir au moins 1");
+	}
+	// Matlab strel("disk", r) et cv::MORPH_ELLIPSE ne produisent pas exactement
+	// le meme masque (approximations differentes du disque). Ecart assume :
+	// l'effet sur des objets bien plus grands que l'element est negligeable.
+	// Attention : OpenCV attend un DIAMETRE, Matlab un rayon.
+	if (fill.empty()) {
+		throw std::invalid_argument("Imopen : image vide");
+	}
+	if (fill.type() != CV_8UC1) {
+		throw std::invalid_argument("Imopen : image attendue en 8 bits, un canal (CV_8UC1)"); 
+	}
+
+	const cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(2 * rayon + 1, 2 * rayon + 1));
+	cv::Mat sortie;
+	cv::morphologyEx(fill, sortie, cv::MORPH_OPEN, element);
+	return sortie;
+}

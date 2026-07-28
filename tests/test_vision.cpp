@@ -82,3 +82,46 @@ TEST(Imfill, ImageCouleurRejetee) {
     const cv::Mat couleur(10, 10, CV_8UC3, cv::Scalar(0, 0, 0));
     EXPECT_THROW(Imfill(couleur), std::invalid_argument);
 }
+
+
+TEST(Imopen, SupprimeUnPontFinEntreDeuxCarres) {
+    // Deux carres de 40x40 relies par un pont de 4 pixels d'epaisseur.
+    // Avec un rayon de 7, l'element structurant fait 15x15 : le pont, plus fin,
+    // ne survit pas a l'erosion ; les carres, bien plus larges, si.
+    cv::Mat image = cv::Mat::zeros(100, 200, CV_8UC1);
+    image(cv::Rect(20, 30, 40, 40)).setTo(cv::Scalar(255));    // carre gauche
+    image(cv::Rect(140, 30, 40, 40)).setTo(cv::Scalar(255));   // carre droit
+    image(cv::Rect(60, 48, 80, 4)).setTo(cv::Scalar(255));     // pont
+
+    // Verification du montage : le pont est bien la au depart.
+    ASSERT_EQ(image.at<uchar>(50, 100), 255);
+
+    const cv::Mat resultat = Imopen(image);
+
+    ASSERT_EQ(resultat.rows, image.rows);
+    ASSERT_EQ(resultat.cols, image.cols);
+    ASSERT_EQ(resultat.type(), CV_8UC1);
+
+    EXPECT_EQ(resultat.at<uchar>(50, 40), 255);    // centre du carre gauche
+    EXPECT_EQ(resultat.at<uchar>(50, 160), 255);   // centre du carre droit
+    EXPECT_EQ(resultat.at<uchar>(50, 100), 0);     // le pont a disparu
+    EXPECT_EQ(resultat.at<uchar>(10, 10), 0);      // le fond reste noir
+
+    // L'ouverture ne peut qu'enlever des pixels, jamais en ajouter.
+    EXPECT_LT(cv::countNonZero(resultat), cv::countNonZero(image));
+}
+
+TEST(Imopen, RayonInvalideRejete) {
+    const cv::Mat image = cv::Mat::zeros(50, 50, CV_8UC1);
+    EXPECT_THROW(Imopen(image, 0), std::invalid_argument);
+    EXPECT_THROW(Imopen(image, -3), std::invalid_argument);
+}
+
+TEST(Imopen, ImageVideRejetee) {
+    EXPECT_THROW(Imopen(cv::Mat()), std::invalid_argument);
+}
+
+TEST(Imopen, ImageCouleurRejetee) {
+    const cv::Mat couleur(10, 10, CV_8UC3, cv::Scalar(0, 0, 0));
+    EXPECT_THROW(Imopen(couleur), std::invalid_argument);
+}
