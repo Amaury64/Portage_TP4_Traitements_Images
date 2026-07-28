@@ -13,29 +13,47 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG        v1.15.2
 )
+# Obligatoire sous MSVC : sans cela, GoogleTest utilise un runtime statique
+# incompatible avec le projet et l'edition de liens echoue.
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+# OpenCV n'est PAS telecharge : find_package cherche une bibliotheque deja
+# installee. En local c'est vcpkg qui la fournit (via CMakePresets), en CI
+# c'est le paquet systeme libopencv-dev.
 find_package(OpenCV REQUIRED)
 
-# --- Bibliotheque du projet -----------------------------------------------
+# --- Bibliotheques du projet ----------------------------------------------
+# pieces : calcul pur (calibration, classification). Aucune dependance image.
 add_library(pieces src/pieces.cpp)
 target_include_directories(pieces PUBLIC include)
 
+# vision : traitement d'image. Seule cible liee a OpenCV.
+add_library(vision src/vision.cpp)
+target_include_directories(vision PUBLIC include)
+target_link_libraries(vision PUBLIC ${OpenCV_LIBS})
+
 # --- Tests ----------------------------------------------------------------
 enable_testing()
-
-add_executable(tests tests/test_pieces.cpp)
-target_link_libraries(tests PRIVATE pieces GTest::gtest_main)
-
 include(GoogleTest)
-gtest_discover_tests(tests)
+
+add_executable(tests_pieces tests/test_pieces.cpp)
+target_link_libraries(tests_pieces PRIVATE pieces GTest::gtest_main)
+gtest_discover_tests(tests_pieces)
+
+add_executable(tests_vision tests/test_vision.cpp)
+target_link_libraries(tests_vision PRIVATE vision GTest::gtest_main)
+gtest_discover_tests(tests_vision)
 
 # --- Options de compilation -----------------------------------------------
 if(MSVC)
-    target_compile_options(pieces PRIVATE /W4 /permissive-)
-    target_compile_options(tests  PRIVATE /W4 /permissive-)
+    target_compile_options(pieces       PRIVATE /W4 /permissive-)
+    target_compile_options(vision       PRIVATE /W4 /permissive-)
+    target_compile_options(tests_pieces PRIVATE /W4 /permissive-)
+    target_compile_options(tests_vision PRIVATE /W4 /permissive-)
 else()
-    target_compile_options(pieces PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(tests  PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(pieces       PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(vision       PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(tests_pieces PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(tests_vision PRIVATE -Wall -Wextra -Wpedantic)
 endif()
