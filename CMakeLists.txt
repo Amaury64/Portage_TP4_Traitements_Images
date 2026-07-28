@@ -34,6 +34,10 @@ target_include_directories(vision PUBLIC include)
 
 target_link_libraries(vision PUBLIC ${OpenCV_LIBS} pieces)
 
+# --- Executable -----------------------------------------------------------
+add_executable(compter src/main.cpp)
+target_link_libraries(compter PRIVATE vision)
+
 # --- Tests ----------------------------------------------------------------
 enable_testing()
 include(GoogleTest)
@@ -52,9 +56,11 @@ if(MSVC)
     target_compile_options(vision       PRIVATE /W4 /permissive-)
     target_compile_options(tests_pieces PRIVATE /W4 /permissive-)
     target_compile_options(tests_vision PRIVATE /W4 /permissive-)
+    target_compile_options(compter      PRIVATE /W4 /permissive-)
 else()
     target_compile_options(pieces       PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(vision       PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(tests_pieces PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(tests_vision PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(compter      PRIVATE -Wall -Wextra -Wpedantic)
 endif()
