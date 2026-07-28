@@ -125,3 +125,50 @@ TEST(Imopen, ImageCouleurRejetee) {
     const cv::Mat couleur(10, 10, CV_8UC3, cv::Scalar(0, 0, 0));
     EXPECT_THROW(Imopen(couleur), std::invalid_argument);
 }
+
+TEST(ExtraireRegions, DeuxCarresSepares) {
+    // Deux carres bien separes, d'aires differentes pour pouvoir les
+    // distinguer sans dependre de l'ordre de sortie d'OpenCV.
+    cv::Mat image = cv::Mat::zeros(100, 100, CV_8UC1);
+    image(cv::Rect(10, 20, 30, 30)).setTo(cv::Scalar(255));   // aire 900
+    image(cv::Rect(60, 20, 20, 20)).setTo(cv::Scalar(255));   // aire 400
+
+    std::vector<Region> regions = ExtraireRegions(image);
+
+    // Le fond n'est pas renvoye : deux objets, deux regions.
+    ASSERT_EQ(regions.size(), 2u);
+
+    // Rien ne garantit l'ordre : on trie par aire decroissante.
+    std::sort(regions.begin(), regions.end(),
+        [](const Region& a, const Region& b) {
+            return a.aire_pixels > b.aire_pixels;
+        });
+
+    EXPECT_DOUBLE_EQ(regions[0].aire_pixels, 900.0);
+    EXPECT_DOUBLE_EQ(regions[1].aire_pixels, 400.0);
+
+    // Centroide d'un carre de w pixels commencant en x0 : x0 + (w-1)/2.
+    // Grand carre : x de 10 a 39 -> 24.5 ; y de 20 a 49 -> 34.5.
+    EXPECT_NEAR(regions[0].centroide_x, 24.5, 1e-9);
+    EXPECT_NEAR(regions[0].centroide_y, 34.5, 1e-9);
+
+    // Petit carre : x de 60 a 79 -> 69.5 ; y de 20 a 39 -> 29.5.
+    EXPECT_NEAR(regions[1].centroide_x, 69.5, 1e-9);
+    EXPECT_NEAR(regions[1].centroide_y, 29.5, 1e-9);
+}
+
+TEST(ExtraireRegions, ImageNoireNeDonneAucuneRegion) {
+    // Le fond seul ne doit pas etre renvoye comme une region.
+    const cv::Mat image = cv::Mat::zeros(50, 50, CV_8UC1);
+
+    EXPECT_TRUE(ExtraireRegions(image).empty());
+}
+
+TEST(ExtraireRegions, ImageVideRejetee) {
+    EXPECT_THROW(ExtraireRegions(cv::Mat()), std::invalid_argument);
+}
+
+TEST(ExtraireRegions, ImageCouleurRejetee) {
+    const cv::Mat couleur(10, 10, CV_8UC3, cv::Scalar(0, 0, 0));
+    EXPECT_THROW(ExtraireRegions(couleur), std::invalid_argument);
+}

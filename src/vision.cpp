@@ -68,3 +68,28 @@ cv::Mat Imopen(const cv::Mat& fill,int rayon) {
 	cv::morphologyEx(fill, sortie, cv::MORPH_OPEN, element);
 	return sortie;
 }
+
+
+
+
+std::vector<Region> ExtraireRegions(const cv::Mat& binaire) {
+	if (binaire.empty()) {
+		throw std::invalid_argument("ExtraireRegions : image vide");
+	}
+	if (binaire.type() != CV_8UC1) {
+		throw std::invalid_argument("ExtraireRegions : image attendue en 8 bits, un canal (CV_8UC1)");
+	}
+	std::vector<Region> regions;
+	cv::Mat labels, stats, centroids;
+	const int nb = cv::connectedComponentsWithStats(binaire, labels, stats, centroids, 4, CV_32S);
+	regions.reserve(static_cast<std::size_t>(nb - 1));
+	for (int k = 1; k < nb; ++k) {   // 0 est le fond
+		Region region;
+		region.aire_pixels = static_cast<double>(stats.at<int>(k, cv::CC_STAT_AREA));
+		region.centroide_x = centroids.at<double>(k, 0);
+		region.centroide_y = centroids.at<double>(k, 1);
+		regions.push_back(region);
+	}
+	return regions;
+	
+}
