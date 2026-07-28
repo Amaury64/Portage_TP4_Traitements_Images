@@ -1,0 +1,11 @@
+{
+  "name": "portage-tp-traitements-images",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": ["jpeg", "png"]
+    }
+  ]
+}

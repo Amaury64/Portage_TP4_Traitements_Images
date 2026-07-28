@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Portage_TP_Traitements_Images LANGUAGES CXX)
+project(Portage_TP4_Traitements_Images LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,8 @@ FetchContent_Declare(
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
+
+find_package(OpenCV REQUIRED)
 
 # --- Bibliotheque du projet -----------------------------------------------
 add_library(pieces src/pieces.cpp)
