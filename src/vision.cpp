@@ -1,6 +1,8 @@
 #include "vision.h"
 #include <opencv2/imgproc.hpp>
 #include <stdexcept>
+#include <algorithm>
+#include<cmath>
 
 
 cv::Mat SeuillerOtsu(const cv::Mat& gris) {
@@ -88,6 +90,37 @@ std::vector<Region> ExtraireRegions(const cv::Mat& binaire) {
 		region.aire_pixels = static_cast<double>(stats.at<int>(k, cv::CC_STAT_AREA));
 		region.centroide_x = centroids.at<double>(k, 0);
 		region.centroide_y = centroids.at<double>(k, 1);
+		
+		// --- Axes de l'ellipse equivalente ---------------------------------
+		// Matlab fournit MajorAxisLength / MinorAxisLength ; OpenCV non.
+		// On les recalcule a partir des moments centres d'ordre 2 : la matrice
+		// de covariance des coordonnees des pixels de la region a pour valeurs
+		// propres les carres des demi-axes (a un facteur pres).
+		// Meme outil qu'un recalage rigide : covariance + decomposition
+		// spectrale, en 2D au lieu de 3D.
+		const cv::Mat masque = (labels == k);
+		const cv::Moments moments = cv::moments(masque, true);
+
+		// Moments centres normalises par l'aire (m00).
+		// Correction +1/12 : un pixel est un carre de cote 1, pas un point.
+		// C'est la convention de Matlab ; sans elle les axes sont legerement
+		// sous-estimes (negligeable sur de gros objets, visible sur de petits).
+		const double a = moments.mu20 / moments.m00 + 1.0 / 12.0;
+		const double b = moments.mu11 / moments.m00;
+		const double c = moments.mu02 / moments.m00 + 1.0 / 12.0;
+
+		// Valeurs propres d'une matrice symetrique 2x2 : formule fermee.
+		const double demi_somme = (a + c) / 2.0;
+		const double ecart = std::sqrt((a - c) * (a - c) / 4.0 + b * b);
+
+		// lambda2 peut etre infinitesimalement negatif en arithmetique
+		// flottante sur une region parfaitement symetrique : on borne a 0.
+		const double lambda1 = demi_somme + ecart;
+		const double lambda2 = std::max(demi_somme - ecart, 0.0);
+
+		region.grand_axe_pixels = 4.0 * std::sqrt(lambda1);
+		region.petit_axe_pixels = 4.0 * std::sqrt(lambda2);
+
 		regions.push_back(region);
 	}
 	return regions;

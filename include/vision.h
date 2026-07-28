@@ -9,6 +9,8 @@ struct Region {
     double aire_pixels = 0.0;
     double centroide_x = 0.0;
     double centroide_y = 0.0;
+    double grand_axe_pixels = 0.0;
+    double petit_axe_pixels = 0.0;
 };
 
 std::vector<Region> ExtraireRegions(const cv::Mat& binaire);

@@ -4,6 +4,7 @@
 #include <opencv2/core.hpp>
 
 #include <stdexcept>
+#include <opencv2/imgproc.hpp>
 
 
 TEST(SeuillerOtsu, SepareDeuxNiveauxFranchement) {
@@ -171,4 +172,72 @@ TEST(ExtraireRegions, ImageVideRejetee) {
 TEST(ExtraireRegions, ImageCouleurRejetee) {
     const cv::Mat couleur(10, 10, CV_8UC3, cv::Scalar(0, 0, 0));
     EXPECT_THROW(ExtraireRegions(couleur), std::invalid_argument);
+}
+
+TEST(ExtraireRegions, DisqueADesAxesEgaux) {
+    // Un disque parfait : l'ellipse equivalente est un cercle, les deux axes
+    // valent le diametre et le ratio vaut 1.
+    cv::Mat image = cv::Mat::zeros(200, 200, CV_8UC1);
+    cv::circle(image, cv::Point(100, 100), 40, cv::Scalar(255), cv::FILLED);
+
+    const std::vector<Region> regions = ExtraireRegions(image);
+    ASSERT_EQ(regions.size(), 1u);
+
+    const Region& r = regions[0];
+
+    // Tolerance en pourcentage : la discretisation d'un disque en pixels
+    // n'est jamais exacte. Un seuil trop serre rendrait le test fragile.
+    EXPECT_NEAR(r.grand_axe_pixels, 80.0, 80.0 * 0.02);
+    EXPECT_NEAR(r.petit_axe_pixels, 80.0, 80.0 * 0.02);
+
+    EXPECT_NEAR(r.grand_axe_pixels / r.petit_axe_pixels, 1.0, 0.02);
+}
+
+TEST(ExtraireRegions, EllipseRetrouveSesAxes) {
+    // Ellipse de demi-axes 60 (horizontal) et 30 (vertical) :
+    // les longueurs totales attendues sont 120 et 60.
+    cv::Mat image = cv::Mat::zeros(200, 300, CV_8UC1);
+    cv::ellipse(image, cv::Point(150, 100), cv::Size(60, 30),
+        0.0, 0.0, 360.0, cv::Scalar(255), cv::FILLED);
+
+    const std::vector<Region> regions = ExtraireRegions(image);
+    ASSERT_EQ(regions.size(), 1u);
+
+    const Region& r = regions[0];
+
+    EXPECT_NEAR(r.grand_axe_pixels, 120.0, 120.0 * 0.02);
+    EXPECT_NEAR(r.petit_axe_pixels, 60.0, 60.0 * 0.02);
+
+    // Le grand axe est bien le plus grand des deux : lambda1 >= lambda2.
+    EXPECT_GT(r.grand_axe_pixels, r.petit_axe_pixels);
+}
+
+TEST(ExtraireRegions, EllipseTourneeDonneLesMemesAxes) {
+    // Meme ellipse, tournee de 30 degres. Les axes sont des grandeurs
+    // intrinsequement liees a la forme : ils ne doivent pas dependre de
+    // l'orientation. C'est ce que garantit le passage par les valeurs propres
+    // plutot que par les variances brutes en x et en y.
+    cv::Mat image = cv::Mat::zeros(300, 300, CV_8UC1);
+    cv::ellipse(image, cv::Point(150, 150), cv::Size(60, 30),
+        30.0, 0.0, 360.0, cv::Scalar(255), cv::FILLED);
+
+    const std::vector<Region> regions = ExtraireRegions(image);
+    ASSERT_EQ(regions.size(), 1u);
+
+    EXPECT_NEAR(regions[0].grand_axe_pixels, 120.0, 120.0 * 0.02);
+    EXPECT_NEAR(regions[0].petit_axe_pixels, 60.0, 60.0 * 0.02);
+}
+
+TEST(ExtraireRegions, RectangleAllongeADesAxesTresDifferents) {
+    // Pour un rectangle w x h, l'ellipse equivalente a un ratio d'axes
+    // exactement egal a w/h : ici 100/20 = 5, bien au-dela du seuil de
+    // circularite de 1.15 utilise pour rejeter les intrus.
+    cv::Mat image = cv::Mat::zeros(200, 300, CV_8UC1);
+    image(cv::Rect(50, 90, 100, 20)).setTo(cv::Scalar(255));
+
+    const std::vector<Region> regions = ExtraireRegions(image);
+    ASSERT_EQ(regions.size(), 1u);
+
+    const Region& r = regions[0];
+    EXPECT_NEAR(r.grand_axe_pixels / r.petit_axe_pixels, 5.0, 5.0 * 0.02);
 }
