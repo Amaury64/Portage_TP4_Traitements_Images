@@ -31,7 +31,8 @@ target_include_directories(pieces PUBLIC include)
 # vision : traitement d'image. Seule cible liee a OpenCV.
 add_library(vision src/vision.cpp)
 target_include_directories(vision PUBLIC include)
-target_link_libraries(vision PUBLIC ${OpenCV_LIBS})
+
+target_link_libraries(vision PUBLIC ${OpenCV_LIBS} pieces)
 
 # --- Tests ----------------------------------------------------------------
 enable_testing()

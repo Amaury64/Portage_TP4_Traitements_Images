@@ -3,6 +3,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <string>
 constexpr double kPi = 3.14159265358979323846;
 
 
@@ -58,4 +59,14 @@ std::optional<int> IdentifierPiece(double aire_pixels,
 	return std::nullopt;
 	
 
+}
+
+double DiametreMmPour(int valeur_centimes) {
+	for (const PieceReference& k : kTableReference) {
+		if (k.valeur_centimes == valeur_centimes) {
+			return (k.diametre_mm);
+		}
+
+	}
+	throw std::invalid_argument("DiametreMmPour : valeur inconnue : " + std::to_string(valeur_centimes));
 }

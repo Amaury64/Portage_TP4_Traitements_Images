@@ -4,6 +4,7 @@
 #include <vector>
 
 
+
 struct PieceReference {
     int valeur_centimes;
     double diametre_mm;
@@ -24,3 +25,5 @@ std::optional<int> IdentifierPiece(double aire_pixels,
     double taille_pixel_mm,
     double seuil_circularite = 1.15,
     double marge_aire = 0.20);
+
+double DiametreMmPour(int valeur_centimes);

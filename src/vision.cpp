@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <algorithm>
 #include<cmath>
+#include <optional> 
+#include "pieces.h"
 
 
 cv::Mat SeuillerOtsu(const cv::Mat& gris) {
@@ -125,4 +127,66 @@ std::vector<Region> ExtraireRegions(const cv::Mat& binaire) {
 	}
 	return regions;
 	
+}
+
+cv::Mat ChargerEnNiveauxDeGris(const std::string& chemin) {
+	cv::Mat image = cv::imread(chemin, cv::IMREAD_GRAYSCALE);
+	if (image.empty()) {
+		throw std::runtime_error("ChargerEnNiveauxDeGris : lecture impossible de " + chemin);
+	}
+	return image;
+}
+
+ResultatComptage AnalyserImage(const cv::Mat& gris,
+	std::size_t indice_reference,
+	int valeur_reference_centimes) {
+	ResultatComptage resultat;
+
+	const cv::Mat binaire = SeuillerOtsu(gris);
+	const cv::Mat bouchee = Imfill(binaire);
+	const cv::Mat ouverte = Imopen(bouchee);
+	const std::vector<Region> regions = ExtraireRegions(ouverte);
+
+	// Sans region de reference, pas de calibration possible : on ne peut rien
+	// conclure. Erreur d'appel, donc exception.
+	if (indice_reference >= regions.size()) {
+		throw std::invalid_argument(
+			"AnalyserImage : indice de reference hors des regions detectees");
+	}
+
+	// Calibration : la piece de reference a un diametre reel connu ; son aire
+	// en pixels donne l'echelle de toute l'image.
+	const double diametre_reference_mm = DiametreMmPour(valeur_reference_centimes);
+	const double taille_pixel_mm =
+		TaillePixelMm(regions[indice_reference].aire_pixels, diametre_reference_mm);
+
+	for (const Region& region : regions) {
+		// Un petit axe nul signifie une region degeneree (ligne d'un pixel
+		// d'epaisseur) : le ratio serait une division par zero. On la rejette
+		// sans calcul, ce n'est de toute facon pas une piece.
+		if (region.petit_axe_pixels <= 0.0) {
+			++resultat.regions_rejetees;
+			continue;
+		}
+
+		const double ratio_axes = region.grand_axe_pixels / region.petit_axe_pixels;
+
+		const std::optional<int> valeur =
+			IdentifierPiece(region.aire_pixels, ratio_axes, taille_pixel_mm);
+
+		if (!valeur.has_value()) {
+			++resultat.regions_rejetees;
+			continue;
+		}
+
+		PieceDetectee piece;
+		piece.valeur_centimes = *valeur;
+		piece.centroide_x = region.centroide_x;
+		piece.centroide_y = region.centroide_y;
+		resultat.pieces.push_back(piece);
+
+		resultat.total_centimes += *valeur;
+	}
+
+	return resultat;
 }

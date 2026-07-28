@@ -101,3 +101,14 @@ TEST(IdentifierPiece, CirculariteALaLimiteAcceptee) {
 
     EXPECT_TRUE(IdentifierPiece(aire, 1.15, kTaillePixel).has_value());
 }
+
+TEST(DiametreMmPour, ValeursConnues) {
+    EXPECT_DOUBLE_EQ(DiametreMmPour(200), 25.75);
+    EXPECT_DOUBLE_EQ(DiametreMmPour(1), 16.25);
+    // 50 c est plus GRANDE que 1 EUR : les diametres ne suivent pas la valeur.
+    EXPECT_GT(DiametreMmPour(50), DiametreMmPour(100));
+}
+
+TEST(DiametreMmPour, ValeurInconnueRejetee) {
+    EXPECT_THROW(DiametreMmPour(42), std::invalid_argument);
+}

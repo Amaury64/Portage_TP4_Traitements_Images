@@ -1,5 +1,5 @@
 #include "vision.h"
-
+#include "pieces.h"
 #include <gtest/gtest.h>
 #include <opencv2/core.hpp>
 
@@ -240,4 +240,44 @@ TEST(ExtraireRegions, RectangleAllongeADesAxesTresDifferents) {
 
     const Region& r = regions[0];
     EXPECT_NEAR(r.grand_axe_pixels / r.petit_axe_pixels, 5.0, 5.0 * 0.02);
+}
+
+TEST(AnalyserImage, CompteDeuxPiecesEtRejetteUnIntrus) {
+    cv::Mat image = cv::Mat::zeros(400, 800, CV_8UC1);
+
+    // Piece de reference : 2 EUR (25.75 mm), tracee avec 200 px de diametre.
+    // L'echelle deduite sera donc 25.75/200 = 0.128 mm par pixel.
+    cv::circle(image, cv::Point(150, 200), 100, cv::Scalar(255), cv::FILLED);
+
+    // Piece de 1 EUR (23.25 mm) : a cette echelle, environ 180 px de diametre.
+    cv::circle(image, cv::Point(400, 200), 90, cv::Scalar(255), cv::FILLED);
+
+    // Intrus : ellipse tres allongee, d'aire comparable a une petite piece.
+    // Elle passe le test de l'aire mais doit etre rejetee par la circularite.
+    cv::ellipse(image, cv::Point(650, 200), cv::Size(100, 35),
+        0.0, 0.0, 360.0, cv::Scalar(255), cv::FILLED);
+
+    // Les composantes sont numerotees dans l'ordre de balayage : le disque de
+    // 2 EUR, dont le sommet est le plus haut, arrive en premier.
+    const ResultatComptage resultat = AnalyserImage(image, 0, 200);
+
+    EXPECT_EQ(resultat.pieces.size(), 2u);
+    EXPECT_EQ(resultat.regions_rejetees, 1u);
+    EXPECT_EQ(resultat.total_centimes, 300);   // 200 + 100
+}
+
+TEST(AnalyserImage, IndiceDeReferenceHorsPlageRejete) {
+    cv::Mat image = cv::Mat::zeros(300, 300, CV_8UC1);
+    cv::circle(image, cv::Point(150, 150), 80, cv::Scalar(255), cv::FILLED);
+
+    // Une seule region detectee : l'indice 5 n'existe pas.
+    EXPECT_THROW(AnalyserImage(image, 5, 200), std::invalid_argument);
+}
+
+TEST(AnalyserImage, ValeurDeReferenceInconnueRejetee) {
+    cv::Mat image = cv::Mat::zeros(300, 300, CV_8UC1);
+    cv::circle(image, cv::Point(150, 150), 80, cv::Scalar(255), cv::FILLED);
+
+    // 42 centimes n'est pas une piece en euros.
+    EXPECT_THROW(AnalyserImage(image, 0, 42), std::invalid_argument);
 }
